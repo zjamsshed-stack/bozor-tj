@@ -34,9 +34,9 @@ function AppRouter() {
   const [unread, setUnread] = useState(3);
   const [key, setKey] = useState(0);
 
-  const navigate = (p) => {
+  const navigate = (p, navParams) => {
     if (p === "notifications") setUnread(0);
-    goTo(p);
+    goTo(p, navParams);
     setKey(k => k + 1);
   };
 
