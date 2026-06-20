@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLang } from "../context/LangContext";
+import { CATEGORY_KEYS } from "../constants/categories";
 
 const CITIES = ["Все города","Душанбе","Худжанд","Куляб","Бохтар","Хорог","Истаравшан","Турсунзаде","Нурек","Вахдат","Гиссар","Пенджикент","Канибадам","Исфара","Бустон","Гулистон","Истиклол","Левакант","Рогун"];
 
@@ -311,7 +312,7 @@ export default function Home() {
         </div>
         <div className="cats-grid">
           {t.cats.map((c, i) => (
-            <div key={i} className="cat-item" onClick={() => window.goTo("category")}>
+            <div key={i} className="cat-item" onClick={() => window.goTo("category", { categoryKey: CATEGORY_KEYS[i] })}>
               <div className="cat-icon">{c.icon}</div>
               <div className="cat-name">{c.name}</div>
               <div className="cat-count">{c.count}</div>

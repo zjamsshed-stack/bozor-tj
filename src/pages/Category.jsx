@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 
+import { useLang } from "../context/LangContext";
+import { useRouter } from "../context/RouterContext";
+import { CATALOG } from "../constants/categories";
+
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Golos+Text:wght@400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -90,68 +94,53 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
   .cat-sidebar{position:static;}
   .hero-inner{flex-direction:column;text-align:center;}
 }
+
+/* BREADCRUMBS */
+.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px;font-size:13px;}
+.crumb{color:var(--muted);cursor:pointer;transition:color 0.15s;}
+.crumb:hover{color:var(--emerald);}
+.crumb.current{color:var(--text);font-weight:700;cursor:default;}
+.crumb-sep{color:var(--muted);opacity:0.5;}
+
+/* SUBCATS / BRANDS / MODELS GRID */
+.drill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
+.drill-card{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:22px 14px;text-align:center;cursor:pointer;transition:all 0.2s;}
+.drill-card:hover{border-color:var(--emerald);background:var(--ebg);transform:translateY(-3px);}
+.drill-icon{font-size:34px;margin-bottom:10px;}
+.drill-name{font-size:13px;font-weight:700;margin-bottom:4px;}
+.drill-sub{font-size:11px;color:var(--muted);}
+
+.model-list{display:flex;flex-direction:column;gap:8px;}
+.model-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:all 0.2s;}
+.model-row:hover{border-color:var(--emerald);background:var(--ebg);}
+.model-row-name{font-size:14px;font-weight:600;}
+.model-row-arrow{color:var(--muted);font-size:18px;}
+
+.drill-empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.drill-empty-icon{font-size:52px;margin-bottom:14px;}
+.drill-empty-text{font-size:14px;margin-bottom:18px;}
 `;
 
-const CATEGORIES = {
-  auto: {
-    name: "Транспорт",
-    icon: "🚗",
-    desc: "Автомобили, мотоциклы, велосипеды и запчасти",
-    count: "111K+",
-    subcats: ["Все", "Легковые", "Грузовики", "Мотоциклы", "Запчасти"],
-  },
-  real: {
-    name: "Недвижимость",
-    icon: "🏠",
-    desc: "Квартиры, дома, земельные участки",
-    count: "65K+",
-    subcats: ["Все", "Квартиры", "Дома", "Участки", "Коммерция"],
-  },
-  tech: {
-    name: "Электроника",
-    icon: "📱",
-    desc: "Телефоны, ноутбуки, планшеты, аксессуары",
-    count: "28K+",
-    subcats: ["Все", "Телефоны", "Ноутбуки", "Планшеты", "Аксессуары"],
-  },
-};
-
-const ADS_DATA = {
-  auto: [
-    { id:1, emoji:"🚗", title:"Toyota Camry 2023, белая", price:185000, city:"Душанбе", time:"5 мин", new:true, prem:true },
-    { id:2, emoji:"🚙", title:"Hyundai Tucson 2022, серый", price:162000, city:"Худжанд", time:"15 мин", new:true, prem:false },
-    { id:3, emoji:"🚗", title:"Kia K5 2023, чёрная", price:178000, city:"Душанбе", time:"30 мин", new:false, prem:false },
-    { id:4, emoji:"🚙", title:"Toyota RAV4 2021, синий", price:220000, city:"Куляб", time:"1 час", new:false, prem:false },
-    { id:5, emoji:"🚗", title:"Hyundai Elantra 2022", price:138000, city:"Душанбе", time:"2 часа", new:false, prem:false },
-    { id:6, emoji:"🏎️", title:"BMW 3 Series 2020", price:280000, city:"Худжанд", time:"3 часа", new:false, prem:true },
-    { id:7, emoji:"🚗", title:"Mercedes C-Class 2019", price:260000, city:"Душанбе", time:"4 часа", new:false, prem:false },
-    { id:8, emoji:"🚙", title:"Volkswagen Tiguan 2021", price:195000, city:"Бохтар", time:"5 часов", new:false, prem:false },
-  ],
-  real: [
-    { id:1, emoji:"🏠", title:"2-комн. квартира, 65 м²", price:95000, city:"Душанбе", time:"10 мин", new:true, prem:true },
-    { id:2, emoji:"🏢", title:"Студия 35 м², Сино", price:45000, city:"Душанбе", time:"20 мин", new:true, prem:false },
-    { id:3, emoji:"🏠", title:"3-комн. квартира, 85 м²", price:128000, city:"Худжанд", time:"1 час", new:false, prem:false },
-    { id:4, emoji:"🏡", title:"Дом 200 м² с участком", price:350000, city:"Гиссар", time:"2 часа", new:false, prem:true },
-    { id:5, emoji:"🏢", title:"1-комн. квартира, 45 м²", price:62000, city:"Душанбе", time:"3 часа", new:false, prem:false },
-    { id:6, emoji:"🏠", title:"4-комн. квартира, 120 м²", price:185000, city:"Худжанд", time:"4 часа", new:false, prem:false },
-  ],
-  tech: [
-    { id:1, emoji:"📱", title:"iPhone 15 Pro Max, 256GB", price:8500, city:"Душанбе", time:"5 мин", new:true, prem:true },
-    { id:2, emoji:"💻", title:"MacBook Pro M3, 512GB", price:14200, city:"Худжанд", time:"15 мин", new:true, prem:false },
-    { id:3, emoji:"📱", title:"Samsung Galaxy S24", price:6800, city:"Душанбе", time:"1 час", new:false, prem:false },
-    { id:4, emoji:"⌨️", title:"iPad Pro 12.9", price:7200, city:"Куляб", time:"2 часа", new:false, prem:false },
-    { id:5, emoji:"📱", title:"iPhone 13 Pro, 128GB", price:4200, city:"Душанбе", time:"3 часа", new:false, prem:false },
-    { id:6, emoji:"💻", title:"Lenovo IdeaPad 5", price:3800, city:"Бохтар", time:"5 часов", new:false, prem:true },
-  ],
-};
+// Мок-объявления для финального уровня (категория/бренд/модель)
+const SAMPLE_ADS = [
+  { id:1, title:"Отличное состояние, торг уместен", price:185000, city:"Душанбе", time:"5 мин", new:true, prem:true },
+  { id:2, title:"Срочная продажа, все документы в порядке", price:162000, city:"Худжанд", time:"15 мин", new:true, prem:false },
+  { id:3, title:"Один владелец, не битый", price:178000, city:"Душанбе", time:"30 мин", new:false, prem:false },
+  { id:4, title:"Полная комплектация", price:220000, city:"Куляб", time:"1 час", new:false, prem:false },
+];
 
 export default function Category() {
-  const [catKey, setCatKey] = useState("auto");
-  const [subcat, setSubcat] = useState("Все");
+  const { lang } = useLang();
+  const { params } = useRouter();
+  const categoryKey = params?.categoryKey || "auto";
+  const cat = CATALOG[categoryKey] || CATALOG.auto;
+
+  // Навигация внутри категории: subcats -> brands -> models -> ads
+  const [subcat, setSubcat] = useState(null);
+  const [brand, setBrand] = useState(null);
+  const [model, setModel] = useState(null);
   const [view, setView] = useState("grid");
   const [sort, setSort] = useState("new");
-  const [page, setPage] = useState(1);
-  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -160,30 +149,40 @@ export default function Category() {
     return () => document.head.removeChild(s);
   }, []);
 
-  const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+  // При смене категории (новый клик с главной) — сбрасываем уровень навигации
+  useEffect(() => {
+    setSubcat(null);
+    setBrand(null);
+    setModel(null);
+  }, [categoryKey]);
 
-  const cat = CATEGORIES[catKey];
-  const ads = ADS_DATA[catKey] || [];
-  
-  const sortedAds = [...ads].sort((a, b) => {
-    if (sort === "new") return 0;
-    if (sort === "price") return a.price - b.price;
-    return 0;
-  });
+  const t = lang === "ru"
+    ? { all: "Все объявления", sub: "Подкатегории", brands: "Бренды", models: "Модели",
+        new: "Новые первыми", price: "Сначала дешевле", grid: "Сетка", list: "Список",
+        empty: "Пока нет объявлений", emptyDesc: "Будь первым кто разместит здесь объявление!",
+        addBtn: "Подать объявление", showing: "Показано объявлений", back: "Назад" }
+    : { all: "Ҳама эълонҳо", sub: "Зеркатегорияҳо", brands: "Брендҳо", models: "Моделҳо",
+        new: "Аввал навҳо", price: "Аввал арзонтар", grid: "Тӯр", list: "Рӯйхат",
+        empty: "Ҳоло эълон нест", emptyDesc: "Аввалин шуда эълон гузор!",
+        addBtn: "Эълон гузоштан", showing: "Эълонҳо нишон дода шуд", back: "Бозгашт" };
 
-  const itemsPerPage = 8;
-  const totalPages = Math.ceil(sortedAds.length / itemsPerPage);
-  const startIdx = (page - 1) * itemsPerPage;
-  const paginatedAds = sortedAds.slice(startIdx, startIdx + itemsPerPage);
+  // ===== ОПРЕДЕЛЯЕМ ТЕКУЩИЙ УРОВЕНЬ =====
+  const subcatObj = cat.subcats?.find(s => s.id === subcat);
+  const brandObj = subcatObj?.brands?.find(b => b.id === brand);
+
+  const showSubcats = !!cat.subcats && !subcat;
+  const showBrands = subcatObj?.hasBrands && !brand;
+  const showModels = brandObj && !model;
+  const showAds = !cat.subcats || (subcatObj && !subcatObj.hasBrands) || (brandObj && model);
+
+  const resetTo = (level) => {
+    if (level === "category") { setSubcat(null); setBrand(null); setModel(null); }
+    if (level === "subcat") { setBrand(null); setModel(null); }
+    if (level === "brand") { setModel(null); }
+  };
 
   return (
     <div>
-      <header className="header">
-        <div className="logo">bozor<span>.tj</span></div>
-        <button className="btn" onClick={() => window.goTo("search")}>← Назад к поиску</button>
-      </header>
-
-      {/* HERO */}
       <div className="hero">
         <div className="hero-inner">
           <div className="hero-icon">{cat.icon}</div>
@@ -191,56 +190,101 @@ export default function Category() {
             <h1>{cat.name}</h1>
             <p>{cat.desc}</p>
             <div className="hero-stats">
-              <div className="stat"><div className="stat-num">{cat.count}</div> объявлений</div>
-              <div className="stat"><div className="stat-num">{ads.length}</div> на странице</div>
-              <div className="stat"><div className="stat-num">18</div> городов ТЖ</div>
+              <div className="stat"><div className="stat-num">{cat.count}</div> {lang === "ru" ? "объявлений" : "эълон"}</div>
+              <div className="stat"><div className="stat-num">18</div> {lang === "ru" ? "городов" : "шаҳр"}</div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="page">
-        <div className="layout">
-          {/* SIDEBAR */}
-          <aside className="cat-sidebar">
-            <div className="sidebar-section">
-              <div className="section-title">Подкатегории</div>
-              {cat.subcats.map(sc => (
-                <button key={sc} className={`filter-item ${subcat === sc ? "active" : ""}`} onClick={() => { setSubcat(sc); setPage(1); }}>
-                  {sc}
-                </button>
-              ))}
-            </div>
-            <div className="sidebar-section">
-              <div className="section-title">Цена</div>
-              {["0-100K", "100K-200K", "200K-500K", "500K+"].map(p => (
-                <label key={p} className="filter-item" style={{ display: "flex", alignItems: "center" }}>
-                  <input type="checkbox" className="filter-check" onChange={(e) => showToast("Фильтр: " + p)} />
-                  {p} с.
-                </label>
-              ))}
-            </div>
-            <div className="sidebar-section">
-              <div className="section-title">Город</div>
-              {["Душанбе", "Худжанд", "Куляб", "Бохтар"].map(city => (
-                <button key={city} className="filter-item" onClick={() => showToast("Город: " + city)}>
-                  📍 {city}
-                </button>
-              ))}
-            </div>
-          </aside>
+        {/* ХЛЕБНЫЕ КРОШКИ */}
+        <div className="crumbs">
+          <span className={`crumb ${!subcat ? "current" : ""}`} onClick={() => resetTo("category")}>
+            {cat.icon} {cat.name}
+          </span>
+          {subcat && (
+            <>
+              <span className="crumb-sep">›</span>
+              <span className={`crumb ${!brand ? "current" : ""}`} onClick={() => resetTo("subcat")}>
+                {subcatObj?.name}
+              </span>
+            </>
+          )}
+          {brand && (
+            <>
+              <span className="crumb-sep">›</span>
+              <span className={`crumb ${!model ? "current" : ""}`} onClick={() => resetTo("brand")}>
+                {brandObj?.name}
+              </span>
+            </>
+          )}
+          {model && (
+            <>
+              <span className="crumb-sep">›</span>
+              <span className="crumb current">{model}</span>
+            </>
+          )}
+        </div>
 
-          {/* MAIN */}
+        {/* УРОВЕНЬ 1: ПОДКАТЕГОРИИ */}
+        {showSubcats && (
           <div>
-            {/* TOOLBAR */}
+            <div className="section-title" style={{ marginBottom: 14 }}>{t.sub}</div>
+            <div className="drill-grid">
+              {cat.subcats.map(sc => (
+                <div key={sc.id} className="drill-card" onClick={() => setSubcat(sc.id)}>
+                  <div className="drill-icon">{sc.icon}</div>
+                  <div className="drill-name">{sc.name}</div>
+                  {sc.hasBrands && <div className="drill-sub">{sc.brands.length} {lang === "ru" ? "брендов" : "бренд"}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* УРОВЕНЬ 2: БРЕНДЫ */}
+        {showBrands && (
+          <div>
+            <div className="section-title" style={{ marginBottom: 14 }}>{t.brands}</div>
+            <div className="drill-grid">
+              {subcatObj.brands.map(b => (
+                <div key={b.id} className="drill-card" onClick={() => setBrand(b.id)}>
+                  <div className="drill-icon">{subcatObj.icon}</div>
+                  <div className="drill-name">{b.name}</div>
+                  <div className="drill-sub">{b.models.length} {lang === "ru" ? "моделей" : "модел"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* УРОВЕНЬ 3: МОДЕЛИ */}
+        {showModels && (
+          <div>
+            <div className="section-title" style={{ marginBottom: 14 }}>{t.models}</div>
+            <div className="model-list">
+              {brandObj.models.map(m => (
+                <div key={m} className="model-row" onClick={() => setModel(m)}>
+                  <span className="model-row-name">{brandObj.name} {m}</span>
+                  <span className="model-row-arrow">›</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* УРОВЕНЬ 4: ОБЪЯВЛЕНИЯ */}
+        {showAds && (
+          <div>
             <div className="toolbar">
               <div className="toolbar-left">
-                <span className="toolbar-text">Показано {paginatedAds.length} из {ads.length}</span>
+                <span className="toolbar-text">{t.showing}: {SAMPLE_ADS.length}</span>
               </div>
               <div className="toolbar-right">
-                <select className="sort-select" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
-                  <option value="new">Новые первыми</option>
-                  <option value="price">Сначала дешевле</option>
+                <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
+                  <option value="new">{t.new}</option>
+                  <option value="price">{t.price}</option>
                 </select>
                 <div className="view-toggle">
                   <button className={`view-btn ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}>⊞</button>
@@ -249,19 +293,18 @@ export default function Category() {
               </div>
             </div>
 
-            {/* ADS */}
             {view === "grid" ? (
               <div className="ads-grid">
-                {paginatedAds.map(ad => (
+                {SAMPLE_ADS.map(ad => (
                   <div key={ad.id} className="ad-card" onClick={() => window.goTo("ad")}>
                     <div className="ad-img">
                       {ad.prem && <span className="badge-prem">⭐ TOP</span>}
-                      {ad.new && <span className="badge-new">Новое</span>}
-                      {ad.emoji}
+                      {ad.new && <span className="badge-new">{lang === "ru" ? "Новое" : "Нав"}</span>}
+                      {cat.icon}
                     </div>
                     <div className="ad-body">
                       <div className="ad-price">{ad.price.toLocaleString()} с.</div>
-                      <div className="ad-title">{ad.title}</div>
+                      <div className="ad-title">{model ? `${brandObj.name} ${model}` : ad.title}</div>
                       <div className="ad-footer">
                         <span className="ad-city">📍 {ad.city}</span>
                         <span className="ad-time">{ad.time}</span>
@@ -272,16 +315,14 @@ export default function Category() {
               </div>
             ) : (
               <div className="ads-list">
-                {paginatedAds.map(ad => (
+                {SAMPLE_ADS.map(ad => (
                   <div key={ad.id} className="ad-list-item" onClick={() => window.goTo("ad")}>
-                    <div className="ad-list-img">{ad.emoji}</div>
+                    <div className="ad-list-img">{cat.icon}</div>
                     <div className="ad-list-info">
-                      <div className="ad-list-title">{ad.title}</div>
+                      <div className="ad-list-title">{model ? `${brandObj.name} ${model}` : ad.title}</div>
                       <div className="ad-list-details">
                         <span className="detail-item">📍 {ad.city}</span>
                         <span className="detail-item">🕐 {ad.time}</span>
-                        {ad.prem && <span className="detail-item" style={{ color: "var(--gold)" }}>⭐ TOP</span>}
-                        {ad.new && <span className="detail-item" style={{ color: "var(--emerald)" }}>🆕 Новое</span>}
                       </div>
                       <div className="ad-list-price">{ad.price.toLocaleString()} с.</div>
                     </div>
@@ -289,31 +330,9 @@ export default function Category() {
                 ))}
               </div>
             )}
-
-            {/* PAGINATION */}
-            {totalPages > 1 && (
-              <div className="pagination">
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i + 1}
-                    className={`page-btn ${page === i + 1 ? "active" : ""}`}
-                    onClick={() => setPage(i + 1)}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
-
-      {toast && <div style={{
-        position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-        background: "var(--emerald)", color: "#0F1923", padding: "12px 24px",
-        borderRadius: 11, fontWeight: 700, fontSize: 14, zIndex: 300,
-        boxShadow: "0 8px 28px rgba(0,200,150,0.35)"
-      }}>{toast}</div>}
     </div>
   );
 }
