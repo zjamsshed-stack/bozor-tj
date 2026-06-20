@@ -172,8 +172,16 @@ export default function Category() {
 
   const showSubcats = !!cat.subcats && !subcat;
   const showBrands = subcatObj?.hasBrands && !brand;
-  const showModels = brandObj && !model;
-  const showAds = !cat.subcats || (subcatObj && !subcatObj.hasBrands) || (brandObj && model);
+  const brandHasModels = brandObj && brandObj.models && brandObj.models.length > 0;
+  const showModels = brandHasModels && !model;
+  const showAds = !cat.subcats || (subcatObj && !subcatObj.hasBrands) || (brandObj && !brandHasModels) || (brandObj && model);
+
+  // Заголовок объявления: модель если выбрана, иначе название бренда/типа, иначе общий мок-текст
+  const titleFor = (ad) => {
+    if (model) return `${brandObj.name} ${model}`;
+    if (brandObj) return brandObj.name;
+    return ad.title;
+  };
 
   const resetTo = (level) => {
     if (level === "category") { setSubcat(null); setBrand(null); setModel(null); }
@@ -304,7 +312,7 @@ export default function Category() {
                     </div>
                     <div className="ad-body">
                       <div className="ad-price">{ad.price.toLocaleString()} с.</div>
-                      <div className="ad-title">{model ? `${brandObj.name} ${model}` : ad.title}</div>
+                      <div className="ad-title">{titleFor(ad)}</div>
                       <div className="ad-footer">
                         <span className="ad-city">📍 {ad.city}</span>
                         <span className="ad-time">{ad.time}</span>
@@ -319,7 +327,7 @@ export default function Category() {
                   <div key={ad.id} className="ad-list-item" onClick={() => window.goTo("ad")}>
                     <div className="ad-list-img">{cat.icon}</div>
                     <div className="ad-list-info">
-                      <div className="ad-list-title">{model ? `${brandObj.name} ${model}` : ad.title}</div>
+                      <div className="ad-list-title">{titleFor(ad)}</div>
                       <div className="ad-list-details">
                         <span className="detail-item">📍 {ad.city}</span>
                         <span className="detail-item">🕐 {ad.time}</span>
