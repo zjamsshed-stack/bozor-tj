@@ -25,6 +25,7 @@ import Map from "./pages/Map";
 import Notifications from "./pages/Notifications";
 import Messages from "./pages/Messages";
 import Category from "./pages/Category";
+import PostAd from "./pages/PostAd";
 
 // ===== ROUTER (inside providers) =====
 function AppRouter() {
@@ -63,6 +64,7 @@ function AppRouter() {
       notifications: <Notifications />,
       messages:      <Messages />,
       category:      <Category />,
+      postad:        <PostAd />,
     };
     return pages[page] || <Home />;
   };
@@ -89,7 +91,10 @@ function AppRouter() {
       {showCreate && (
         <CreateModal
           onClose={() => setShowCreate(false)}
-          onSelect={(opt) => showToast("✅ " + opt.title)}
+          onSelect={(opt) => {
+            setShowCreate(false);
+            navigate("postad", { categoryLabel: opt.title, icon: opt.icon });
+          }}
         />
       )}
 
