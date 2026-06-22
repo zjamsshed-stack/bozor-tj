@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "../context/RouterContext";
+import { getHistory, getFollowing, toggleFollow, clearHistory } from "../utils/storage";
 
 const USER = {
   name: "Фируз Рахимов",
   phone: "+992 93 234-56-78",
   email: "firuz@gmail.com",
+  telegram: "@firuz_rahimov",
   city: "Душанбе",
   avatar: "Ф",
   joined: "Февраль 2025",
   verified: true,
+  phoneVerified: true,
   rating: 4.8,
   reviews: 12,
   balance: 150,
@@ -78,6 +82,9 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 .avatar{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--emerald),#00E5AD);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:30px;font-weight:700;color:#0F1923;margin:0 auto 14px;border:3px solid rgba(0,200,150,0.3);}
 .profile-name{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;}
 .profile-phone{font-size:13px;color:var(--muted);}
+.profile-joined{font-size:11px;color:var(--muted);margin-top:4px;}
+.profile-tg-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#229ED9;font-weight:600;margin-top:8px;cursor:pointer;}
+.phone-verified-mini{font-size:10px;color:var(--emerald);font-weight:600;margin-left:4px;}
 .verified-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--emerald);font-weight:600;background:var(--ebg);padding:3px 10px;border-radius:20px;margin-top:8px;}
 .rating-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;}
 .stars{color:var(--gold);font-size:14px;letter-spacing:1px;}
@@ -214,12 +221,15 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 `;
 
 export default function ProfilePage() {
+  const { goTo } = useRouter();
   const [section, setSection] = useState("myads");
   const [adsTab, setAdsTab] = useState("active");
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [ads, setAds] = useState(MY_ADS);
   const [favs, setFavs] = useState(FAV_ADS);
+  const [history, setHistory] = useState([]);
+  const [following, setFollowing] = useState([]);
   const [notifs, setNotifs] = useState({ messages: true, views: true, price: false, news: false });
   const [editForm, setEditForm] = useState({ name: USER.name, phone: USER.phone, email: USER.email, city: USER.city });
 
@@ -229,6 +239,17 @@ export default function ProfilePage() {
     document.head.appendChild(s);
     return () => document.head.removeChild(s);
   }, []);
+
+  useEffect(() => {
+    setHistory(getHistory());
+    setFollowing(getFollowing());
+  }, [section]);
+
+  const handleUnfollow = (sellerId) => {
+    toggleFollow({ id: sellerId });
+    setFollowing(getFollowing());
+    showToast("Подписка отменена");
+  };
 
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
@@ -248,6 +269,8 @@ export default function ProfilePage() {
   const SNAV = [
     { id:"myads", icon:"📋", label:"Мои объявления", badge: ads.filter(a=>a.status==="pending").length || null },
     { id:"favs", icon:"❤️", label:"Избранное", badge: null },
+    { id:"history", icon:"🕐", label:"Просмотренные", badge: null },
+    { id:"following", icon:"🔔", label:"Я слежу", badge: null },
     { id:"reviews", icon:"⭐", label:"Отзывы", badge: null },
     { id:"balance", icon:"🎉", label:"Бесплатно!", badge: null },
     { id:"settings", icon:"⚙️", label:"Настройки профиля", badge: null },
@@ -275,8 +298,17 @@ export default function ProfilePage() {
             <div className="profile-hero">
               <div className="avatar">{USER.avatar}</div>
               <div className="profile-name">{USER.name}</div>
-              <div className="profile-phone">{USER.phone}</div>
+              <div className="profile-phone">
+                {USER.phone}
+                {USER.phoneVerified && <span className="phone-verified-mini">✓ подтверждён</span>}
+              </div>
               {USER.verified && <div className="verified-badge">✓ Верифицирован</div>}
+              <div className="profile-joined">📅 На сайте с {USER.joined}</div>
+              {USER.telegram && (
+                <div className="profile-tg-link" onClick={() => showToast("Telegram: " + USER.telegram)}>
+                  ✈️ {USER.telegram}
+                </div>
+              )}
               <div className="rating-row">
                 <div className="stars">{"★".repeat(Math.floor(USER.rating))}{"☆".repeat(5-Math.floor(USER.rating))}</div>
                 <div className="rating-val">{USER.rating}</div>
@@ -360,7 +392,7 @@ export default function ProfilePage() {
                         <span className="ad-meta-item">📅 до {ad.expires}</span>
                       </div>
                       <div className="ad-actions-row">
-                        <button className="btn btn-ghost btn-sm" onClick={() => showToast("Редактирование — скоро!")}>✏️ Редактировать</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => goTo("postad", { editAd: ad })}>✏️ Редактировать</button>
                         <button className="btn btn-warn btn-sm" onClick={() => showToast("⭐ Объявление поднято!")}>⬆️ Поднять бесплатно</button>
                         <button className="btn btn-ghost btn-sm" onClick={() => deactivateAd(ad.id)}>
                           {ad.status==="active" ? "⏸ Снять" : "▶ Активировать"}
@@ -403,6 +435,69 @@ export default function ProfilePage() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ПРОСМОТРЕННЫЕ */}
+            {section === "history" && (
+              <div className="content-card">
+                <div className="content-head">
+                  <div className="content-title">🕐 Недавно просмотренные</div>
+                  {history.length > 0 && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => { clearHistory(); setHistory([]); showToast("История очищена"); }}>
+                      Очистить
+                    </button>
+                  )}
+                </div>
+                {history.length === 0 ? (
+                  <div className="empty">
+                    <div className="empty-icon">🕐</div>
+                    <div className="empty-title">История пуста</div>
+                    <div className="empty-sub">Здесь появятся объявления, которые вы открывали</div>
+                  </div>
+                ) : (
+                  <div className="fav-grid">
+                    {history.map(item => (
+                      <div key={item.id} className="fav-card" onClick={() => goTo("ad")} style={{ cursor: "pointer" }}>
+                        <div className="fav-img">{item.emoji}</div>
+                        <div className="fav-body">
+                          <div className="fav-price">{item.price?.toLocaleString()} с.</div>
+                          <div className="fav-title">{item.title}</div>
+                          <div className="fav-city">📍 {item.city}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Я СЛЕЖУ */}
+            {section === "following" && (
+              <div className="content-card">
+                <div className="content-head">
+                  <div className="content-title">🔔 Я слежу за продавцами</div>
+                  <span style={{ fontSize:13, color:"var(--muted)" }}>{following.length}</span>
+                </div>
+                {following.length === 0 ? (
+                  <div className="empty">
+                    <div className="empty-icon">🔔</div>
+                    <div className="empty-title">Вы пока ни за кем не следите</div>
+                    <div className="empty-sub">Подпишитесь на продавца на странице объявления, чтобы узнавать о новых товарах</div>
+                  </div>
+                ) : (
+                  following.map(s => (
+                    <div key={s.id} className="ad-item">
+                      <div className="ad-emoji">{s.avatar || "👤"}</div>
+                      <div className="ad-info">
+                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                          <div className="ad-title-item">{s.name}</div>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleUnfollow(s.id)}>Отписаться</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}

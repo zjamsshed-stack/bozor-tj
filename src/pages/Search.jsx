@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { addSavedSearch, getSavedSearches, removeSavedSearch } from "../utils/storage";
 
 const CITIES = [
   "Все города","Душанбе","Бохтар","Бустон","Вахдат","Гиссар","Гулистон",
@@ -207,6 +208,16 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 .sort-sel{padding:8px 12px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-weight:600;outline:none;cursor:pointer;font-family:'Golos Text',sans-serif;}
 .sort-sel option{background:var(--card);}
 .view-toggle{display:flex;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.save-search-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.save-search-btn:hover{border-color:var(--emerald);color:var(--emerald);}
+.saved-panel-wrap{position:relative;}
+.saved-panel{position:absolute;top:42px;right:0;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px;min-width:260px;max-width:320px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,0.4);max-height:340px;overflow-y:auto;}
+.saved-panel-empty{padding:16px;text-align:center;font-size:12px;color:var(--muted);}
+.saved-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.saved-item:hover{background:var(--card2);}
+.saved-item-label{font-size:12px;font-weight:600;flex:1;}
+.saved-item-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;flex-shrink:0;}
+.saved-item-x:hover{color:var(--red);}
 .vbtn{padding:5px 9px;border-radius:5px;border:none;background:none;cursor:pointer;font-size:15px;color:var(--muted);transition:all 0.15s;}
 .vbtn.on{background:var(--ebg);color:var(--emerald);}
 
@@ -314,6 +325,8 @@ export default function SearchPage() {
   const [sort, setSort] = useState("new");
   const [visible, setVisible] = useState(12);
   const [toast, setToast] = useState(null);
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [showSavedPanel, setShowSavedPanel] = useState(false);
 
   // Common
   const [priceFrom, setPriceFrom] = useState("");
@@ -372,7 +385,39 @@ export default function SearchPage() {
     return () => document.head.removeChild(s);
   }, []);
 
+  useEffect(() => {
+    setSavedSearches(getSavedSearches());
+  }, []);
+
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 2500); };
+
+  const handleSaveSearch = () => {
+    const parts = [];
+    if (search) parts.push(`"${search}"`);
+    if (cat !== "all") parts.push(cat);
+    if (city !== "Все города") parts.push(city);
+    if (priceFrom || priceTo) parts.push(`${priceFrom || "0"}–${priceTo || "∞"} с.`);
+    const label = parts.length > 0 ? parts.join(" · ") : "Все объявления";
+    const list = addSavedSearch({ label, query: search, cat, city, priceFrom, priceTo, sort });
+    setSavedSearches(list);
+    showToast("💾 Поиск сохранён");
+  };
+
+  const applySavedSearch = (s) => {
+    setSearch(s.query || "");
+    setCat(s.cat || "all");
+    setCity(s.city || "Все города");
+    setPriceFrom(s.priceFrom || "");
+    setPriceTo(s.priceTo || "");
+    setSort(s.sort || "new");
+    setShowSavedPanel(false);
+    showToast("Поиск применён");
+  };
+
+  const handleRemoveSaved = (id, e) => {
+    e.stopPropagation();
+    setSavedSearches(removeSavedSearch(id));
+  };
 
   const tog = (arr, set, v) => set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
@@ -663,6 +708,26 @@ export default function SearchPage() {
             <div className="results-top">
               <div className="res-count">Найдено: <strong>{result.length}</strong> объявлений</div>
               <div className="res-right">
+                <button className="save-search-btn" onClick={handleSaveSearch}>💾 Сохранить поиск</button>
+                <div className="saved-panel-wrap">
+                  <button className="save-search-btn" onClick={() => setShowSavedPanel(!showSavedPanel)}>
+                    🔖 Мои поиски {savedSearches.length > 0 && `(${savedSearches.length})`}
+                  </button>
+                  {showSavedPanel && (
+                    <div className="saved-panel">
+                      {savedSearches.length === 0 ? (
+                        <div className="saved-panel-empty">Сохранённых поисков пока нет</div>
+                      ) : (
+                        savedSearches.map(s => (
+                          <div key={s.id} className="saved-item" onClick={() => applySavedSearch(s)}>
+                            <span className="saved-item-label">{s.label}</span>
+                            <button className="saved-item-x" onClick={(e) => handleRemoveSaved(s.id, e)}>✕</button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <select className="sort-sel" value={sort} onChange={e => setSort(e.target.value)}>
                   {SORTS.map(s => <option key={s.val} value={s.val}>{s.label}</option>)}
                 </select>

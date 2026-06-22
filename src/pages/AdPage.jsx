@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "../context/RouterContext";
+import { addToHistory, isFollowing, toggleFollow, isBlocked, toggleBlock } from "../utils/storage";
 
 const AD = {
   id: 3,
@@ -26,13 +28,21 @@ const AD = {
     ["Таможня", "Растаможена"],
   ],
   seller: {
+    id: "firuz_rahimov",
     name: "Фируз Рахимов",
     phone: "+992 93 234-56-78",
+    telegram: "@firuz_rahimov",
     joined: "Февраль 2025",
     ads: 5,
     verified: true,
+    phoneVerified: true,
     avatar: "Ф",
   },
+  otherAds: [
+    { id: 8, title: "iPhone 13 Pro, 256GB", price: 4200, emoji: "📱", views: 89 },
+    { id: 9, title: "Диван угловой серый", price: 3200, emoji: "🛋️", views: 45 },
+    { id: 10, title: "Ноутбук Lenovo IdeaPad", price: 3800, emoji: "💻", views: 12 },
+  ],
   photos: ["🚗", "🚙", "🛞", "💺", "🔧", "📋"],
   similar: [
     { id: 4, title: "Toyota Camry 2021, серебро", price: 165000, city: "Душанбе", emoji: "🚗", views: 198 },
@@ -123,6 +133,32 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 
 /* SELLER CARD */
 .seller-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:14px;}
+.follow-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:10px;background:var(--card2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;margin-top:10px;font-family:'Golos Text',sans-serif;}
+.follow-btn:hover{border-color:var(--emerald);}
+.follow-btn.active{background:var(--ebg);border-color:var(--emerald);color:var(--emerald);}
+.ad-options-wrap{position:relative;}
+.ad-options-btn{width:36px;height:36px;border-radius:10px;background:var(--card2);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+.ad-options-menu{position:absolute;top:42px;right:0;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:6px;min-width:200px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.ad-options-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:background 0.15s;}
+.ad-options-item:hover{background:var(--card2);}
+.ad-options-item.danger{color:var(--red);}
+.report-modal-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.report-modal{background:var(--card);border-radius:18px;padding:22px;max-width:380px;width:100%;}
+.report-modal-title{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px;}
+.report-reason{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card2);color:var(--text);margin-bottom:8px;cursor:pointer;font-size:13px;transition:all 0.2s;font-family:'Golos Text',sans-serif;}
+.report-reason:hover{border-color:var(--red);background:rgba(255,77,109,0.08);}
+.seller-top-link{cursor:pointer;border-radius:12px;transition:background 0.15s;margin:-6px;padding:6px;}
+.seller-top-link:hover{background:var(--ebg);}
+.seller-tg-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:#229ED9;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;margin-top:10px;font-family:'Golos Text',sans-serif;}
+.seller-tg-btn:hover{background:#1c8bc4;}
+.phone-verified-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--emerald);font-weight:600;margin-left:6px;}
+.other-ads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px;}
+.other-ad-card{background:var(--card2);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s;}
+.other-ad-card:hover{border-color:var(--emerald);transform:translateY(-2px);}
+.other-ad-img{height:90px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:34px;}
+.other-ad-body{padding:10px;}
+.other-ad-price{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--emerald);}
+.other-ad-title{font-size:11px;margin-top:3px;line-height:1.3;}
 .seller-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
 .seller-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--emerald),#00E5AD);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;color:#0F1923;flex-shrink:0;}
 .seller-name{font-size:16px;font-weight:700;}
@@ -174,10 +210,15 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 `;
 
 export default function AdPage() {
+  const { goTo } = useRouter();
   const [activePhoto, setActivePhoto] = useState(0);
   const [showPhone, setShowPhone] = useState(false);
   const [fav, setFav] = useState(false);
   const [showFull, setShowFull] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [following, setFollowingState] = useState(false);
+  const [blocked, setBlockedState] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -186,6 +227,30 @@ export default function AdPage() {
     document.head.appendChild(s);
     return () => document.head.removeChild(s);
   }, []);
+
+  useEffect(() => {
+    addToHistory({ id: AD.id, title: AD.title, price: AD.price, city: AD.city, emoji: AD.photos[0] });
+    setFollowingState(isFollowing(AD.seller.id));
+    setBlockedState(isBlocked(AD.seller.id));
+  }, []);
+
+  const handleToggleFollow = () => {
+    const nowFollowing = toggleFollow({ id: AD.seller.id, name: AD.seller.name, avatar: AD.seller.avatar });
+    setFollowingState(nowFollowing);
+    showToast(nowFollowing ? `🔔 Вы подписаны на ${AD.seller.name}` : "Подписка отменена");
+  };
+
+  const handleToggleBlock = () => {
+    const nowBlocked = toggleBlock(AD.seller.id);
+    setBlockedState(nowBlocked);
+    setShowMenu(false);
+    showToast(nowBlocked ? "🚫 Пользователь заблокирован" : "Пользователь разблокирован");
+  };
+
+  const handleReportSubmit = (reason) => {
+    setShowReport(false);
+    showToast("✅ Жалоба отправлена, мы проверим в течение 24 часов");
+  };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
@@ -257,7 +322,7 @@ export default function AdPage() {
                 >
                   {fav ? "❤️" : "🤍"}
                 </button>
-                <button className="btn btn-outline" onClick={() => showToast("Жалоба отправлена")}>⚠️ Пожаловаться</button>
+                <button className="btn btn-outline" onClick={() => setShowReport(true)}>⚠️ Пожаловаться</button>
               </div>
               <div className="share-row">
                 {["📱 Telegram", "💬 WhatsApp", "🔗 Копировать ссылку"].map(s => (
@@ -288,6 +353,22 @@ export default function AdPage() {
               </div>
             </div>
 
+            {/* OTHER ADS FROM SELLER */}
+            <div>
+              <div className="section-title">👤 Другие объявления {AD.seller.name.split(" ")[0]}</div>
+              <div className="other-ads-grid">
+                {AD.otherAds.map(o => (
+                  <div key={o.id} className="other-ad-card" onClick={() => showToast("Открываем объявление...")}>
+                    <div className="other-ad-img">{o.emoji}</div>
+                    <div className="other-ad-body">
+                      <div className="other-ad-price">{o.price.toLocaleString()} с.</div>
+                      <div className="other-ad-title">{o.title}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* SIMILAR */}
             <div>
               <div className="section-title">🔁 Похожие объявления</div>
@@ -309,12 +390,24 @@ export default function AdPage() {
           {/* RIGHT SIDEBAR */}
           <div className="sticky-sidebar">
             <div className="seller-card">
-              <div className="seller-top">
-                <div className="seller-avatar">{AD.seller.avatar}</div>
-                <div>
-                  <div className="seller-name">{AD.seller.name}</div>
-                  {AD.seller.verified && <div className="seller-verified">✓ Верифицирован</div>}
-                  <div className="seller-joined">На сайте с {AD.seller.joined}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div className="seller-top seller-top-link" onClick={() => goTo("profile")} style={{ flex: 1 }}>
+                  <div className="seller-avatar">{AD.seller.avatar}</div>
+                  <div>
+                    <div className="seller-name">{AD.seller.name}</div>
+                    {AD.seller.verified && <div className="seller-verified">✓ Верифицирован</div>}
+                    <div className="seller-joined">На сайте с {AD.seller.joined}</div>
+                  </div>
+                </div>
+                <div className="ad-options-wrap">
+                  <button className="ad-options-btn" onClick={() => setShowMenu(!showMenu)}>⋮</button>
+                  {showMenu && (
+                    <div className="ad-options-menu">
+                      <div className="ad-options-item danger" onClick={handleToggleBlock}>
+                        {blocked ? "✓ Разблокировать" : "🚫 Заблокировать продавца"}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="seller-stats">
@@ -332,15 +425,25 @@ export default function AdPage() {
                 </div>
               </div>
 
+              <button className={`follow-btn ${following ? "active" : ""}`} onClick={handleToggleFollow}>
+                {following ? "✓ Вы подписаны" : "🔔 Следить за продавцом"}
+              </button>
+
               <button
                 className="phone-btn show"
                 onClick={() => { setShowPhone(true); showToast("Будьте осторожны при сделке!"); }}
               >
                 📞 {showPhone ? AD.seller.phone : "Показать телефон"}
+                {AD.seller.phoneVerified && <span className="phone-verified-badge">✓ подтверждён</span>}
               </button>
               <button className="phone-btn chat" onClick={() => showToast("Чат — скоро!")}>
                 💬 Написать продавцу
               </button>
+              {AD.seller.telegram && (
+                <button className="seller-tg-btn" onClick={() => showToast("Открываем Telegram: " + AD.seller.telegram)}>
+                  ✈️ Написать в Telegram
+                </button>
+              )}
 
               <div className="safety-tip">
                 ⚠️ Никогда не переводите деньги вперёд. Проверяйте товар при встрече. Bozor.tj не несёт ответственности за сделки.
@@ -357,6 +460,22 @@ export default function AdPage() {
           </div>
         </div>
       </div>
+
+      {showReport && (
+        <div className="report-modal-overlay" onClick={() => setShowReport(false)}>
+          <div className="report-modal" onClick={e => e.stopPropagation()}>
+            <div className="report-modal-title">⚠️ Пожаловаться на объявление</div>
+            {["Мошенничество", "Запрещённый товар", "Спам / реклама", "Неверная категория или цена", "Другое"].map(reason => (
+              <button key={reason} className="report-reason" onClick={() => handleReportSubmit(reason)}>
+                {reason}
+              </button>
+            ))}
+            <button className="btn btn-ghost btn-full" style={{ marginTop: 6 }} onClick={() => setShowReport(false)}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>

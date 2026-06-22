@@ -103,16 +103,19 @@ export default function PostAd() {
   const t = T[lang];
   const fileRef = useRef(null);
 
-  const categoryIcon = params?.icon || "📦";
+  const editAd = params?.editAd || null;
+  const isEditMode = !!editAd;
+
+  const categoryIcon = params?.icon || editAd?.emoji || "📦";
   const categoryName = params?.categoryLabel || (lang === "ru" ? "Другое" : "Дигар");
 
-  const [photos, setPhotos] = useState([]);
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [price, setPrice] = useState("");
-  const [isFree, setIsFree] = useState(false);
-  const [city, setCity] = useState("");
-  const [phone, setPhone] = useState("");
+  const [photos, setPhotos] = useState(() => editAd?.photos || []);
+  const [title, setTitle] = useState(() => editAd?.title || "");
+  const [desc, setDesc] = useState(() => editAd?.desc || "");
+  const [price, setPrice] = useState(() => editAd?.price ? String(editAd.price) : "");
+  const [isFree, setIsFree] = useState(() => editAd?.price === 0);
+  const [city, setCity] = useState(() => editAd?.city || "");
+  const [phone, setPhone] = useState(() => editAd?.phone || "");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -152,10 +155,10 @@ export default function PostAd() {
       <div className="postad-page">
         <div className="postad-success">
           <div className="postad-success-icon">🎉</div>
-          <div className="postad-success-title">{t.successTitle}</div>
-          <div className="postad-success-text">{t.successText}</div>
-          <button className="btn btn-primary btn-full" onClick={() => goTo("home")}>
-            {t.backHome}
+          <div className="postad-success-title">{isEditMode ? (lang === "ru" ? "Сохранено! ✅" : "Захира шуд! ✅") : t.successTitle}</div>
+          <div className="postad-success-text">{isEditMode ? (lang === "ru" ? "Изменения в объявлении успешно сохранены" : "Тағйирот бомуваффақият захира шуд") : t.successText}</div>
+          <button className="btn btn-primary btn-full" onClick={() => goTo(isEditMode ? "profile" : "home")}>
+            {isEditMode ? (lang === "ru" ? "К моим объявлениям" : "Ба эълонҳои ман") : t.backHome}
           </button>
         </div>
       </div>
@@ -173,7 +176,7 @@ export default function PostAd() {
         <button className="postad-cat-change" onClick={() => goTo("home")}>{t.changeCategory}</button>
       </div>
 
-      <div className="postad-title">{t.title}</div>
+      <div className="postad-title">{isEditMode ? (lang === "ru" ? "Редактировать объявление" : "Эълонро таҳрир кардан") : t.title}</div>
       <div className="postad-sub">{t.sub}</div>
 
       {error && <div className="postad-error">⚠️ {error}</div>}
@@ -246,7 +249,7 @@ export default function PostAd() {
 
       <div className="postad-submit-wrap">
         <button className="btn btn-primary btn-full" onClick={handleSubmit}>
-          {t.submit}
+          {isEditMode ? (lang === "ru" ? "Сохранить изменения" : "Тағйиротро захира кардан") : t.submit}
         </button>
       </div>
     </div>

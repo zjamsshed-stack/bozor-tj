@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "../context/RouterContext";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Golos+Text:wght@400;500;600;700&display=swap');
@@ -43,6 +44,13 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 .auth-footer a{color:var(--emerald);text-decoration:none;font-weight:600;}
 .auth-footer a:hover{text-decoration:underline;}
 .toggle-form{display:flex;gap:8px;margin-bottom:24px;}
+
+.tg-login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;background:#229ED9;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.2s;margin-bottom:18px;font-family:'Golos Text',sans-serif;}
+.tg-login-btn:hover{background:#1c8bc4;transform:translateY(-1px);}
+.tg-login-btn:active{transform:translateY(0);}
+.tg-icon{font-size:18px;}
+.auth-divider{display:flex;align-items:center;gap:12px;margin-bottom:18px;color:var(--muted);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border);}
 .toggle-btn{flex:1;padding:10px;border:none;border-radius:9px;background:var(--card2);color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent;}
 .toggle-btn.active{background:var(--ebg);color:var(--emerald);border-bottom-color:var(--emerald);}
 .error{background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.3);color:#FF4D6D;padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none;}
@@ -54,12 +62,14 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 `;
 
 export default function Auth() {
+  const { goTo } = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({ email: "", password: "", phone: "", name: "", confirm: "" });
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [toast, setToast] = useState(null);
+  const [tgLoading, setTgLoading] = useState(false);
 
   useEffect(() => {
     const s = document.createElement("style");
@@ -69,6 +79,16 @@ export default function Auth() {
   }, []);
 
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  const handleTelegramLogin = () => {
+    setTgLoading(true);
+    showToast("Открываем Telegram...");
+    setTimeout(() => {
+      setTgLoading(false);
+      showToast("✅ Вход через Telegram выполнен!");
+      setTimeout(() => goTo("home"), 800);
+    }, 1200);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -119,7 +139,13 @@ export default function Auth() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-logo">bozor<span>.tj</span></div>
-          
+
+          <button className="tg-login-btn" onClick={handleTelegramLogin} disabled={tgLoading}>
+            <span className="tg-icon">✈️</span>
+            {tgLoading ? "Открываем Telegram..." : "Войти через Telegram"}
+          </button>
+          <div className="auth-divider">или</div>
+
           <div className="toggle-form">
             <button className={`toggle-btn ${isLogin ? "active" : ""}`} onClick={() => { setIsLogin(true); setError(""); setSuccess(""); }}>
               🔐 Вход
